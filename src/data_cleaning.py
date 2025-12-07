@@ -3,33 +3,36 @@
 
 import pandas as pd
 
-# Function to load a CSV file into a DataFrame using pandas
-# This reads the raw sales data so we can clean it later.
+# Function to load a CSV file into a DataFrame
 def load_data(file_path: str):
-    df = pd.read_csv(file_path)    # Copilot suggested a one-liner; I added a variable for clarity.
+    df = pd.read_csv(file_path)
     return df
 
-# Function to clean column names by lowercasing, replacing spaces with underscores,
-# and stripping extra underscores from start/end
+# Function to clean column names (remove quotes, extra spaces, multiple underscores, lowercase)
 def clean_column_names(df):
-    df.columns = df.columns.str.lower() \
-                            .str.replace(' ', '_') \
-                            .str.strip('_')  # Remove leading/trailing underscores
+    df.columns = (
+        df.columns
+        .str.strip()                  # Remove leading/trailing spaces
+        .str.replace('"', '')         # Remove quotes
+        .str.replace(' ', '_')        # Replace spaces with underscores
+        .str.replace(r'_+', '_', regex=True)  # Replace multiple underscores with one
+        .str.lower()                  # Lowercase everything
+    )
     return df
 
-# Function to handle missing values in price and quantity columns
-# We will fill missing values with 0 to keep calculations safe
+# Function to handle missing numeric values
 def handle_missing_values(df):
-    df['price'] = pd.to_numeric(df['price'].astype(str).str.strip(), errors='coerce').fillna(0)   # Fill missing or invalid prices with 0
-    df['qty'] = pd.to_numeric(df['qty'].astype(str).str.strip(), errors='coerce').fillna(0)       # Fill missing or invalid quantities with 0
+    df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0)
+    df['qty'] = pd.to_numeric(df['qty'], errors='coerce').fillna(0)
+    df['date_sold'] = pd.to_datetime(df['date_sold'], errors='coerce')  # Invalid/missing dates become NaT
     return df
 
-# Function to remove rows with invalid data
-# Negative prices or quantities are considered data entry errors and should be removed
+# Function to remove invalid rows (negative price/qty)
 def remove_invalid_rows(df):
-    df = df[(df['price'] >= 0) & (df['qty'] >= 0)]  # Keep only rows with non-negative price and quantity
+    df = df[(df['price'] >= 0) & (df['qty'] >= 0)]
     return df
 
+# Main script
 if __name__ == "__main__":
     raw_path = "data/raw/sales_data_raw.csv"
     cleaned_path = "data/processed/sales_data_clean.csv"
@@ -41,10 +44,10 @@ if __name__ == "__main__":
     df_clean = clean_column_names(df_raw)
     print("Columns after cleaning:", df_clean.columns)
 
-    # Handle missing values using updated column names
+    # Handle missing values
     df_clean = handle_missing_values(df_clean)
 
-    # Remove invalid rows using updated column names
+    # Remove invalid rows
     df_clean = remove_invalid_rows(df_clean)
 
     # Save the cleaned data
